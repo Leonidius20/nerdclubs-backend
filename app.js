@@ -226,4 +226,40 @@ app.get('/login/2fa/verify', authenticateJWT, (req, res) => {
 
 });
 
+app.get('/login/2fa', authenticateJWT, (req, res) => {
+    if (req.user.twofa_passed) {
+        res.status(400).send('2nd factor already passed');
+        return;
+    }
+
+    if (!req.body || !req.body.otp) {
+        res.status(400).send('missing required fields');
+        return;
+    }
+
+    dbPool.query('select twofa_secret from users where user_id = $1', [req.user.user_id], (err, result) => {
+        if (err) {
+            console.error(err);
+            res.status(500).send('Internal server error');
+        } else {
+            if (result.rows[0].twofa_secret === null) {
+                res.status(400).send('2nd factor not enabled');
+                return;
+            }
+
+            const verified = speakeasy.totp.verify({
+                secret: result.rows[0].twofa_secret,
+                encoding: 'base32',
+                token: req.body.otp
+            });
+
+            if (verified) {
+                res.status(200).send(jwt.sign({ username: req.user.username, user_id: req.user.user_id, twofa_passed: true }, jwtSecret));
+            } else {
+                res.status(401).send('Invalid code');
+            }
+        }
+    });
+});
+
 app.listen(port, () => console.log(`App listening on port ${port}!`));
