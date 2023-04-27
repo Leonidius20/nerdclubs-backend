@@ -19,7 +19,7 @@ const dbPool = new Pool(); // uses process.env.PG* variables by default
 // TODO: create a new "backend" user in db with limited permissions
 
 const app = express();
-const port = 3000;
+const port = process.env.APP_PORT;
 
 app.use(bodyParser.json());
 
@@ -99,9 +99,23 @@ app.post('/users', async (req, res) => {
 });
 
 /**
- * @api {get} /login Login 1st factor
+ * @api {get} /users Get all users (only for testing) todo remove
  */
-app.get('/login', (req, res) => {
+app.get('/users', (req, res) => {
+    dbPool.query('select * from users', (err, result) => {
+        if (err) {
+            console.error(err);
+            res.status(500).send('Internal server error');
+        } else {
+            res.status(200).send(result.rows);
+        }
+    });
+});
+
+/**
+ * @api {post} /login Login 1st factor
+ */
+app.post('/login', (req, res) => {
     if (!req.body || !req.body.username || !req.body.password) {
         res.status(400).send('error 1: Missing required fields'); // todo: json woth error id
         return;
@@ -113,10 +127,10 @@ app.get('/login', (req, res) => {
     dbPool.query('select password_hash, user_id, twofa_secret from users where username = $1', [username], async (err, result) => {
         if (err) {
             console.error(err);
-            res.status(500).send('Internal server error');
+            res.status(500).json({ error: 1, message: 'Internal server error'});
         } else {
             if (result.rows.length === 0) {
-                res.status(401).send('Invalid username or password');
+                res.status(401).json({ error: 2, message: 'Invalid username or password'});
                 return;
             }
 
@@ -127,9 +141,11 @@ app.get('/login', (req, res) => {
             if (valid) {
                 const twoFactorRequired = result.rows[0].twofa_secret !== null;
 
-                res.status(200).send(jwt.sign({ username, user_id, twofa_passed: !twoFactorRequired }, jwtSecret));
+                res.status(200).json({
+                    token: jwt.sign({ username, user_id, twofa_passed: !twoFactorRequired }, jwtSecret)
+                });
             } else {
-                res.status(401).send('Invalid username or password');
+                res.status(401).json({ error: 2, message: 'Invalid username or password'});
             }
         }
     });
