@@ -152,9 +152,9 @@ app.post('/login', (req, res) => {
 });
 
 /**
- * @api {post} /login/2fa add 2nd factor
+ * @api {post} /login/2fa/add add 2nd factor
  */
-app.post('/login/2fa', authenticateJWT, (req, res) => {
+app.post('/login/2fa/add', authenticateJWT, (req, res) => {
     if (req.user.twofa_passed) {
         res.status(400).send('2nd factor already enabled');
         return;
@@ -193,9 +193,9 @@ app.post('/login/2fa', authenticateJWT, (req, res) => {
 });
 
 /**
- * @api {get} /login/2fa/verify confirm enabling 2fa by verifying a code
+ * @api {post} /login/2fa/verify confirm enabling 2fa by verifying a code
  */
-app.get('/login/2fa/verify', authenticateJWT, (req, res) => {
+app.post('/login/2fa/verify', authenticateJWT, (req, res) => {
     if (req.user.twofa_passed) {
         res.status(400).send('already logged in');
         return;
@@ -242,24 +242,27 @@ app.get('/login/2fa/verify', authenticateJWT, (req, res) => {
 
 });
 
-app.get('/login/2fa', authenticateJWT, (req, res) => {
+/**
+ * @api {post} /login/2fa check 2nd factor during login
+ */
+app.post('/login/2fa', authenticateJWT, (req, res) => {
     if (req.user.twofa_passed) {
-        res.status(400).send('2nd factor already passed');
+        res.status(400).json({ error: 1, message: '2nd factor already passed'});
         return;
     }
 
     if (!req.body || !req.body.otp) {
-        res.status(400).send('missing required fields');
+        res.status(400).json({ error: 2, message: 'missing required fields'});
         return;
     }
 
     dbPool.query('select twofa_secret from users where user_id = $1', [req.user.user_id], (err, result) => {
         if (err) {
             console.error(err);
-            res.status(500).send('Internal server error');
+            res.status(500).json({ error: 3, message: 'Internal server error'});
         } else {
             if (result.rows[0].twofa_secret === null) {
-                res.status(400).send('2nd factor not enabled');
+                res.status(400).json({error: 4, message: '2nd factor not enabled'});
                 return;
             }
 
@@ -270,9 +273,9 @@ app.get('/login/2fa', authenticateJWT, (req, res) => {
             });
 
             if (verified) {
-                res.status(200).send(jwt.sign({ username: req.user.username, user_id: req.user.user_id, twofa_passed: true }, jwtSecret));
+                res.status(200).json({ token: jwt.sign({ username: req.user.username, user_id: req.user.user_id, twofa_passed: true }, jwtSecret)});
             } else {
-                res.status(401).send('Invalid code');
+                res.status(401).json({ error: 5, message: 'Invalid code'});
             }
         }
     });
