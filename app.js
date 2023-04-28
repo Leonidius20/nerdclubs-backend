@@ -56,7 +56,7 @@ app.get('/', (req, res) => res.send('Hello World!'));
  */
 app.post('/users', async (req, res) => {
     if (!req.body || !req.body.username || !req.body.password || !req.body.email) {
-        res.status(400).send('error 1: Missing required fields'); // todo: json woth error id
+        res.status(400).json({ error: 1, message: 'Missing required fields' });
         return;
     }
 
@@ -65,17 +65,18 @@ app.post('/users', async (req, res) => {
     const email = req.body.email;
 
     if (username.length < 3 || username.length > 20) {
-        res.status(400).send('error 2: Username must be between 3 and 20 characters');
+        res.status(400).json({ error: 2, message: 'Username must be between 3 and 20 characters'});
         return;
     }
 
     if (password.length < 8 || password.length > 20) {
-        res.status(400).send('error 3: Password must be between 8 and 20 characters');
+        res.status(400).json({ error: 3, message: 'Password must be between 8 and 20 characters'});
         return;
     }
 
     if (!email.includes('@')) { // todo: replace with regex
-        res.status(400).send('error 4: Invalid email address');
+        console.log(email);
+        res.status(400).json({ error: 4, message: 'Invalid email address'});
         return;
     }
 
@@ -84,16 +85,25 @@ app.post('/users', async (req, res) => {
         hash = await argon2.hash(password + passwordPepper);
     } catch (err) {
         console.error(err);
-        res.status(500).send('Internal server error');
+        res.status(500).json({ error: 5, message: 'Internal server error'});
         return;
     }
 
-    dbPool.query('insert into users (username, password_hash, email) values ($1, $2, $3)', [username, hash, email], (err, result) => {
+    dbPool.query('insert into users (username, password_hash, email) values ($1, $2, $3) returning user_id', [username, hash, email], (err, result) => {
         if (err) {
             console.error(err);
-            res.status(500).send('Internal server error');
+            res.status(500).json({error: 6, message: `Unable to create user: db says ${err}`});
         } else {
-            res.status(201).send('User created');
+            const user_id = result.rows[0].user_id;
+
+            res.status(200).json({
+                    token: jwt.sign({ 
+                        username, 
+                        user_id, 
+                        twofa_enabled: false,
+                        twofa_passed: true 
+                    }, jwtSecret)
+            });
         }
     });
 });
@@ -142,7 +152,7 @@ app.post('/login', (req, res) => {
                 const twoFactorRequired = result.rows[0].twofa_secret !== null;
 
                 res.status(200).json({
-                    token: jwt.sign({ username, user_id, twofa_passed: !twoFactorRequired }, jwtSecret)
+                    token: jwt.sign({ username, user_id, twofa_enabled: twoFactorRequired, twofa_passed: !twoFactorRequired }, jwtSecret)
                 });
             } else {
                 res.status(401).json({ error: 2, message: 'Invalid username or password'});
@@ -233,7 +243,11 @@ app.post('/login/2fa/verify', authenticateJWT, (req, res) => {
                     }
                 });
 
-                res.status(200).send(jwt.sign({ username: req.user.username, user_id: req.user.user_id, twofa_passed: true }, jwtSecret));
+                res.status(200).send(jwt.sign({ 
+                    username: req.user.username, 
+                    user_id: req.user.user_id, 
+                    twofa_enabled: true,
+                    twofa_passed: true }, jwtSecret));
             } else {
                 res.status(401).send('Invalid code');
             }
