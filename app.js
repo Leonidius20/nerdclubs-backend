@@ -165,41 +165,57 @@ app.post('/login', (req, res) => {
  * @api {post} /login/2fa/add add 2nd factor
  */
 app.post('/login/2fa/add', authenticateJWT, (req, res) => {
-    if (req.user.twofa_passed) {
-        res.status(400).send('2nd factor already enabled');
+    if (req.user.twofa_enabled) {
+        respondWithError(res, 400, 1, '2nd factor already enabled');
         return;
     }
 
     // confirm that there is no 2nd factor already enabled in the db
-    dbPool.query('select twofa_secret from users where user_id = $1', [req.user.user_id], (err, result) => {
+    dbPool.query('select twofa_secret, twofa_confirmed from users where user_id = $1', [req.user.user_id], (err, result) => {
         if (err) {
             console.error(err);
-            res.status(500).send('Internal server error');
+            respondWithError(res, 500, 2, 'Internal server error');
+            return;
         } else {
             if (result.rows[0].twofa_secret !== null) {
-                res.status(400).send('2nd factor already enabled');
-                return;
+                if (result.rows[0].twofa_confirmed) {
+                    respondWithError(res, 400, 3, '2nd factor already enabled');
+                    return;
+                } else {
+                    // respond with the secret
+                    const secret = speakeasy.otpauthURL(
+                        { secret: result.rows[0].twofa_secret, 
+                            label: req.user.username, 
+                            issuer: process.env.APP_NAME,
+                            encoding: 'base32',
+                        });
+
+                    res.status(200).json({secret});
+                    return;
+                }
+            } else {
+                // generate a new secret
+                const secret = speakeasy.generateSecret({
+                    issuer: process.env.APP_NAME, 
+                    label: req.user.username,
+                    length: 20 
+                });
+
+
+                // save the secret in the db
+                dbPool.query('update users set twofa_secret = $1 where user_id = $2', [secret.base32, req.user.user_id], (err, result) => {
+                    if (err) {
+                        console.error(err);
+                        respondWithError(res, 500, 4, 'Internal server error');
+                        return;
+                    } else {
+                        res.status(200).json({secret: secret.otpauth_url});
+                        return;
+                    }
+                });
             }
         }
     });
-
-    // generate a new secret
-    const secret = speakeasy.generateSecret({
-        issuer: process.env.APP_NAME, 
-        name: req.user.username,
-        length: 20 
-    });
-
-    // save the secret in the db
-    dbPool.query('update users set twofa_secret = $1 where user_id = $2', [secret.base32, req.user.user_id], (err, result) => {
-        if (err) {
-            console.error(err);
-            res.status(500).send('Internal server error');
-        } else {
-            res.status(200).send(secret.otpauth_url);
-        }
-    });
-
 });
 
 /**
@@ -296,3 +312,11 @@ app.post('/login/2fa', authenticateJWT, (req, res) => {
 });
 
 app.listen(port, () => console.log(`App listening on port ${port}!`));
+
+function respondWithError(responceObj, httpCode, code, message) {
+    responceObj.status(httpCode).json(getJsonForError(code, message));
+}
+
+function getJsonForError(code, message) {
+    return { error: code, message };
+}
