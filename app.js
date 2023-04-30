@@ -222,13 +222,13 @@ app.post('/login/2fa/add', authenticateJWT, (req, res) => {
  * @api {post} /login/2fa/verify confirm enabling 2fa by verifying a code
  */
 app.post('/login/2fa/verify', authenticateJWT, (req, res) => {
-    if (req.user.twofa_passed) {
-        res.status(400).send('already logged in');
+    if (req.user.twofa_enabled && req.user.twofa_passed) {
+        respondWithError(res, 400, 1, '2nd factor already enabled');
         return;
     }
 
     if (!req.body || !req.body.otp) {
-        res.status(400).send('missing required fields');
+        respondWithError(res, 400, 2, 'missing required fields');
         return;
     }
 
@@ -237,10 +237,11 @@ app.post('/login/2fa/verify', authenticateJWT, (req, res) => {
     dbPool.query('select twofa_secret from users where user_id = $1', [req.user.user_id], (err, result) => {
         if (err) {
             console.error(err);
-            res.status(500).send('Internal server error');
+            respondWithError(res, 500, 3, 'Internal server error');
+            return;
         } else {
             if (result.rows[0].twofa_secret === null) {
-                res.status(400).send('2nd factor not enabled');
+                respondWithError(res, 400, 4, '2nd factor not enabled');
                 return;
             }
 
@@ -255,17 +256,20 @@ app.post('/login/2fa/verify', authenticateJWT, (req, res) => {
                 dbPool.query('update users set twofa_confirmed = true where user_id = $1', [req.user.user_id], (err, result) => {
                     if (err) {
                         console.error(err);
-                        res.status(500).send('Internal server error');
+                        respondWithError(res, 500, 5, 'Internal server error');
                     }
                 });
 
-                res.status(200).send(jwt.sign({ 
+                res.status(200).json({ token: jwt.sign({ 
                     username: req.user.username, 
                     user_id: req.user.user_id, 
                     twofa_enabled: true,
-                    twofa_passed: true }, jwtSecret));
+                    twofa_passed: true }, jwtSecret)});
+
+                return;
             } else {
-                res.status(401).send('Invalid code');
+                respondWithError(res, 401, 6, 'Invalid code');
+                return;
             }
         }
     });
