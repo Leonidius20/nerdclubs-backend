@@ -34,14 +34,14 @@ const authenticateJWT = (req, res, next) => {
 
         jwt.verify(token, jwtSecret, (err, user) => {
             if (err) {
-                return res.status(403).send('Invalid token');
+                return res.status(403).json({error: -1, message: 'Invalid token', valid: false});
             }
 
             req.user = user;
             next();
         });
     } else {
-        res.sendStatus(401);
+        res.status(401).json({error: -1, message: 'Missing authorization header', valid: false});
     }
 };
 
@@ -115,9 +115,9 @@ app.get('/users', (req, res) => {
     dbPool.query('select * from users', (err, result) => {
         if (err) {
             console.error(err);
-            res.status(500).send('Internal server error');
+            res.status(500).json({error: 1, message: 'Internal server error'});
         } else {
-            res.status(200).send(result.rows);
+            res.status(200).json(result.rows);
         }
     });
 });
@@ -307,12 +307,37 @@ app.post('/login/2fa', authenticateJWT, (req, res) => {
             });
 
             if (verified) {
-                res.status(200).json({ token: jwt.sign({ username: req.user.username, user_id: req.user.user_id, twofa_passed: true }, jwtSecret)});
+                res.status(200).json({ token: jwt.sign({ username: req.user.username, user_id: req.user.user_id, twofa_passed: true, twofa_enabled: true }, jwtSecret)});
             } else {
                 res.status(401).json({ error: 5, message: 'Invalid code'});
             }
         }
     });
+});
+
+/**
+ * @api {get} /account Details about the currently logged in user
+ */
+app.get('/account', authenticateJWT, (req, res) => {
+    const user_id = req.user.user_id;
+
+    // get everything from the database and send back
+    dbPool.query('select username, email, privilege_level, created_at, twofa_confirmed from users where user_id = $1', [user_id], (err, result) => {
+        if (err) {
+            console.error(err);
+            res.status(500).json({ error: 1, message: 'Internal server error'});
+        } else {
+            res.status(200).json(result.rows[0]);
+        }
+    });
+});
+
+/**
+ * @api {get} /verifytoken Check if JWT token has correct signature
+ **/
+app.get('/verifytoken', authenticateJWT, (req, res) => {
+    // token is valid if it passes the middleware
+    res.status(200).json({ valid: true });
 });
 
 app.listen(port, () => console.log(`App listening on port ${port}!`));
