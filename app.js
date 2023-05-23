@@ -1,22 +1,37 @@
-const express = require('express');
-const dotenv = require('dotenv');
-const { Pool } = require('pg');
-const argon2 = require('argon2');
-const bodyParser = require('body-parser');
-const jwt = require('jsonwebtoken');
-const speakeasy = require('speakeasy');
+import express from 'express';
+import dotenv from 'dotenv';
+import argon2 from 'argon2';
+import bodyParser from 'body-parser';
+import jwt from 'jsonwebtoken';
+import speakeasy from 'speakeasy';
+
+import { dbPool } from './services/db.service.js';
+
+import authenticateJWT from './middlewares/authenticate.middleware.js';
+
+import userRoutes from './routes/user.routes.js';
+import biometricsRegisterRoutes from './routes/biometrics.register.routes.js';
+import biometricsLoginRoutes from './routes/biometrics.login.routes.js';
+import communitiesRoutes from './routes/communities.routes.js';
 
 /*
   Initial configuration
  */
 dotenv.config();
 
+/*
+  Environment variables 
+ */
 const passwordPepper = process.env.PASSWORD_PEPPER;
 const jwtSecret = process.env.JWT_SECRET;
+const webauthnClientOrigin = process.env.WEBAUTHN_CLIENT_ORIGIN;
+
+export { passwordPepper, jwtSecret, webauthnClientOrigin };
 
 
-const dbPool = new Pool(); // uses process.env.PG* variables by default
+//export const dbPool = new Pool(); // uses process.env.PG* variables by default
 // TODO: create a new "backend" user in db with limited permissions
+
 
 const app = express();
 const port = process.env.APP_PORT;
@@ -24,26 +39,16 @@ const port = process.env.APP_PORT;
 app.use(bodyParser.json());
 
 /*
-  Middlewares
- */
-const authenticateJWT = (req, res, next) => {
-    const authHeader = req.headers.authorization;
+  Routes
+*/
+app.use("/users", userRoutes);
 
-    if (authHeader) {
-        const token = authHeader.split(' ')[1];
+app.use('/biometrics/register', biometricsRegisterRoutes);
+app.use('/biometrics/login', biometricsLoginRoutes);
 
-        jwt.verify(token, jwtSecret, (err, user) => {
-            if (err) {
-                return res.status(403).json({error: -1, message: 'Invalid token', valid: false});
-            }
+app.use('/communities', communitiesRoutes);
 
-            req.user = user;
-            next();
-        });
-    } else {
-        res.status(401).json({error: -1, message: 'Missing authorization header', valid: false});
-    }
-};
+
 
 /*
   Endpoints
@@ -51,76 +56,10 @@ const authenticateJWT = (req, res, next) => {
 
 app.get('/', (req, res) => res.send('Hello World!'));
 
-/**
- * @api {post} /users Create a new user
- */
-app.post('/users', async (req, res) => {
-    if (!req.body || !req.body.username || !req.body.password || !req.body.email) {
-        res.status(400).json({ error: 1, message: 'Missing required fields' });
-        return;
-    }
 
-    const username = req.body.username;
-    const password = req.body.password;
-    const email = req.body.email;
 
-    if (username.length < 3 || username.length > 20) {
-        res.status(400).json({ error: 2, message: 'Username must be between 3 and 20 characters'});
-        return;
-    }
 
-    if (password.length < 8 || password.length > 20) {
-        res.status(400).json({ error: 3, message: 'Password must be between 8 and 20 characters'});
-        return;
-    }
 
-    if (!email.includes('@')) { // todo: replace with regex
-        console.log(email);
-        res.status(400).json({ error: 4, message: 'Invalid email address'});
-        return;
-    }
-
-    let hash = '';
-    try {
-        hash = await argon2.hash(password + passwordPepper);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 5, message: 'Internal server error'});
-        return;
-    }
-
-    dbPool.query('insert into users (username, password_hash, email) values ($1, $2, $3) returning user_id', [username, hash, email], (err, result) => {
-        if (err) {
-            console.error(err);
-            res.status(500).json({error: 6, message: `Unable to create user: db says ${err}`});
-        } else {
-            const user_id = result.rows[0].user_id;
-
-            res.status(200).json({
-                    token: jwt.sign({ 
-                        username, 
-                        user_id, 
-                        twofa_enabled: false,
-                        twofa_passed: true 
-                    }, jwtSecret)
-            });
-        }
-    });
-});
-
-/**
- * @api {get} /users Get all users (only for testing) todo remove
- */
-app.get('/users', (req, res) => {
-    dbPool.query('select * from users', (err, result) => {
-        if (err) {
-            console.error(err);
-            res.status(500).json({error: 1, message: 'Internal server error'});
-        } else {
-            res.status(200).json(result.rows);
-        }
-    });
-});
 
 /**
  * @api {post} /login Login 1st factor
