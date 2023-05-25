@@ -19,3 +19,23 @@ export default function authenticateJWT(req, res, next) {
         res.status(401).json({error: -1, message: 'Missing authorization header', valid: false});
     }
 }
+
+export function authenticateJWTOptional(req, res, next) {
+    const authHeader = req.headers.authorization;
+
+    if (authHeader) {
+        const token = authHeader.split(' ')[1];
+
+        jwt.verify(token, jwtSecret, (err, user) => {
+            if (err) {
+                req.user = null;
+            } else {
+                req.user = user;
+            }
+            next();
+        });
+    } else {
+        req.user = null;
+        next();
+    }
+}

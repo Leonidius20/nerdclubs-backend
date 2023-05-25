@@ -4,7 +4,7 @@ import { dbPool } from '../services/db.service.js';
 export default {
     getByUrl,
     create,
-    getAll
+    getAll,
     //update,
     //remove
 };
@@ -28,12 +28,18 @@ async function getByUrl(req, res) {
 
         const community = rows[0];
 
+        // optionally check jwt token to see if user is owner of the community
+        if (req.user && req.user.user_id === community.owner_user_id) {
+            community.is_owner = true;
+        }
+
         res.status(200).json({
             id: community.community_id,
             name: community.name,
             description: community.description,
             url: community.url,
-            owner_user_id: community.owner_user_id
+            owner_user_id: community.owner_user_id,
+            is_owner: community.is_owner,
         });
     } catch (error) {
         console.error(error);
@@ -44,7 +50,7 @@ async function getByUrl(req, res) {
 async function getAll(req, res) {
     // paged search. If no page is specified, it will return the first page
     // If no seach query is specified, it will return all communities
-    let { page, query } = req.body;
+    let { page, query } = req.query;
 
     if (!page) {
         page = 1;
@@ -55,8 +61,10 @@ async function getAll(req, res) {
 
     try {
         if (query) {
+            query = query.toLowerCase();
+
             const { rows } = await dbPool.query(
-                'SELECT community_id, name, description, url FROM communities WHERE name LIKE $1 ORDER BY community_id LIMIT $2 OFFSET $3',
+                'SELECT community_id, name, description, url FROM communities WHERE LOWER(name) LIKE $1 ORDER BY community_id LIMIT $2 OFFSET $3',
                 [`%${query}%`, page_size, offset]
             );
 

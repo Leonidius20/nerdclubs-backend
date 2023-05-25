@@ -13,6 +13,8 @@ import userRoutes from './routes/user.routes.js';
 import biometricsRegisterRoutes from './routes/biometrics.register.routes.js';
 import biometricsLoginRoutes from './routes/biometrics.login.routes.js';
 import communitiesRoutes from './routes/communities.routes.js';
+import moderatorsRoutes from './routes/moderators.routes.js';
+import categoriesRoutes from './routes/categories.routes.js';
 
 /*
   Initial configuration
@@ -47,6 +49,9 @@ app.use('/biometrics/register', biometricsRegisterRoutes);
 app.use('/biometrics/login', biometricsLoginRoutes);
 
 app.use('/communities', communitiesRoutes);
+app.use('/moderators', moderatorsRoutes);
+
+app.use('/categories', categoriesRoutes);
 
 
 
