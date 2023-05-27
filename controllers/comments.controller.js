@@ -58,8 +58,9 @@ async function getAllForPost(req, res) {
             );
         } else {
             const query = `
-            SELECT c.*, COALESCE(upvotes.upvote_count, 0) - COALESCE(downvotes.downvote_count, 0) AS rating
+            SELECT c.*, users.username, COALESCE(upvotes.upvote_count, 0) - COALESCE(downvotes.downvote_count, 0) AS rating
                 FROM comments c
+                left join users on c.author_user_id = users.user_id
                 LEFT JOIN (
                 SELECT comment_id, COUNT(*) AS upvote_count
                 FROM comment_votes

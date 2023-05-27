@@ -17,7 +17,7 @@ async function getInCategory(req, res) {
     }
 
     try {
-        const result = await dbPool.query('select * from posts where category_id = $1', [category_id]);
+        const result = await dbPool.query('select posts.*, users.username from posts left join users on posts.author_user_id = users.user_id where category_id = $1', [category_id]);
         res.json(result.rows);
     } catch (err) {
         console.error(err);
@@ -61,7 +61,7 @@ async function getPostById(req, res) {
     }
 
     try {
-        const result = await dbPool.query('select * from posts where post_id = $1', [post_id]);
+        const result = await dbPool.query('select posts.*, users.username from posts left join users on posts.author_user_id = users.user_id where post_id = $1', [post_id]);
         res.json(result.rows[0]);
     } catch (err) {
         console.error(err);
