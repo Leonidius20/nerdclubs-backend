@@ -12,17 +12,87 @@ async function getAllForPost(req, res) {
     }
 
     try {
-        const { rows } = await dbPool.query(
-            'SELECT comments.*, users.username as author_username FROM comments left join users on comments.author_user_id = users.user_id  WHERE post_id = $1 ORDER BY created_at ASC',
-            [post_id]
-        );
+        let result = null;
+        if (req.user) {
+            const user_id = req.user.user_id;
 
-        const comments = rows;
-        
+            const query = `
+            SELECT c.*,
+                users.username,
+                COALESCE(upvotes.upvote_count, 0) - COALESCE(downvotes.downvote_count, 0) AS rating,
+                CASE
+                    WHEN cv.is_positive IS NOT NULL THEN TRUE
+                ELSE FALSE
+            END AS i_voted,
+            cv.is_positive AS is_my_vote_positive
+            FROM comments c
+                left join users on c.author_user_id = users.user_id
+            LEFT JOIN (
+            SELECT comment_id, COUNT(*) AS upvote_count
+            FROM comment_votes
+            WHERE is_positive = true
+            GROUP BY comment_id
+            ) upvotes ON c.comment_id = upvotes.comment_id
+            LEFT JOIN (
+            SELECT comment_id, COUNT(*) AS downvote_count
+            FROM comment_votes
+            WHERE is_positive = false
+            GROUP BY comment_id
+            ) downvotes ON c.comment_id = downvotes.comment_id
+            LEFT JOIN (
+            SELECT
+                comment_id,
+                is_positive
+            FROM
+                comment_votes
+            WHERE
+                user_id = $1
+            ) cv ON c.comment_id = cv.comment_id
+            WHERE post_id = $2 ORDER BY created_at ASC;
+            
+            `;
+
+            result = await dbPool.query(
+                query,
+                [user_id, post_id]
+            );
+        } else {
+            const query = `
+            SELECT c.*, COALESCE(upvotes.upvote_count, 0) - COALESCE(downvotes.downvote_count, 0) AS rating
+                FROM comments c
+                LEFT JOIN (
+                SELECT comment_id, COUNT(*) AS upvote_count
+                FROM comment_votes
+                WHERE is_positive = true
+                GROUP BY comment_id
+                ) upvotes ON c.comment_id = upvotes.comment_id
+                LEFT JOIN (
+                SELECT comment_id, COUNT(*) AS downvote_count
+                FROM comment_votes
+                WHERE is_positive = false
+                GROUP BY comment_id
+                ) downvotes ON c.comment_id = downvotes.comment_id
+                WHERE post_id = $1 ORDER BY created_at ASC;
+            
+            `;
+
+            result = await dbPool.query(
+                query,
+                [post_id]
+            );
+
+        }
+
+        const comments = result.rows;
+
         // map comment_id to comment
         const commentsMap = {};
-        comments.forEach(comment => {
+        comments.forEach(async comment => {
+            
+            
+
             commentsMap[comment.comment_id] = comment;
+            
         });
 
         // loop through the array backwards and add children to their parents. delete the child from the array

@@ -18,6 +18,7 @@ import categoriesRoutes from './routes/categories.routes.js';
 import postsRoutes from './routes/posts.routes.js';
 import postVotesRoutes from './routes/post.votes.routes.js';
 import commentsRoutes from './routes/comments.routes.js';
+import commentVotesRoutes from './routes/comment.votes.routes.js';
 
 /*
   Initial configuration
@@ -60,6 +61,7 @@ app.use('/posts', postsRoutes);
 app.use('/post-votes', postVotesRoutes);
 
 app.use('/comments', commentsRoutes);
+app.use('/comment-votes', commentVotesRoutes);
 
 
 
