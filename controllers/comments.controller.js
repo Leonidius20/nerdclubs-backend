@@ -13,7 +13,7 @@ async function getAllForPost(req, res) {
 
     try {
         const { rows } = await dbPool.query(
-            'SELECT comments.*, users.username as author_username FROM comments left join users on comments.author_user_id = users.user_id  WHERE post_id = $1 ORDER BY created_at DESC',
+            'SELECT comments.*, users.username as author_username FROM comments left join users on comments.author_user_id = users.user_id  WHERE post_id = $1 ORDER BY created_at ASC',
             [post_id]
         );
 
