@@ -5,6 +5,7 @@ import authenticateJWT from '../middlewares/authenticate.middleware.js';
 const router = Router();
 
 router.get('/', controller.getInCategory);
+router.get('/:id', controller.getPostById);
 router.post('/', authenticateJWT, controller.create);
 
 export default router;
