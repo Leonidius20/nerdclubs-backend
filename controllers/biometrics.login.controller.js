@@ -57,9 +57,9 @@ async function create(req, res) {
             prevCounter: 0,
             userHandle: decodedCredential.response.userHandle,
         });
-
+        
         // create a jwt token and send it to client
-        res.status(200).json({
+        res.json({
             token: jwt.sign({ username, user_id, twofa_enabled: false, twofa_passed: true }, jwtSecret)
         });
 

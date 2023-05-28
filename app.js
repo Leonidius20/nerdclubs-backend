@@ -277,7 +277,9 @@ app.get('/account', authenticateJWT, (req, res) => {
     const user_id = req.user.user_id;
 
     // get everything from the database and send back
-    dbPool.query('select username, email, privilege_level, created_at, twofa_confirmed from users where user_id = $1', [user_id], (err, result) => {
+    dbPool.query(`select username, email, privilege_level, created_at, CASE WHEN webauthn_public_key IS NOT NULL
+    THEN true
+    ELSE false END AS biometric_enabled from users where user_id = $1`, [user_id], (err, result) => {
         if (err) {
             console.error(err);
             res.status(500).json({ error: 1, message: 'Internal server error'});
