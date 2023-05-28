@@ -3,6 +3,7 @@ import controller from '../controllers/communities.controller.js';
 import authenticateJWT, { authenticateJWTOptional } from '../middlewares/authenticate.middleware.js';
 import moderatorsRouter from './moderators.routes.js';
 import extractCommunityUrl from '../middlewares/extract.community.url.js';
+import checkBodyFieldsCurry from '../middlewares/check.body.fields.middleware.js';
 
 const router = Router();
 
@@ -13,7 +14,11 @@ const router = Router();
 router.get('/', controller.getAll);
 
 router.get('/:url', authenticateJWTOptional, controller.getByUrl);
-router.post('/', authenticateJWT, controller.create);
+router.post('/', 
+    authenticateJWT, 
+    checkBodyFieldsCurry(['name', 'url']),
+    controller.create
+);
 
 // add sub-route for moderators of a community
 
