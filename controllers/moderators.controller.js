@@ -6,31 +6,23 @@ export default {
     remove,
 }
 
-async function add(req, res) {
-    const user_id = req.body.user_id;
-
-    if (!user_id) {
-        return res.status(400).json({ error: 1, message: 'Missing required fields (user_id)' });
-    }
+async function add(req, res, next) {
+    const { user_id, community_id } = req.body;
 
     try {
         await dbPool.query(
             'INSERT INTO moderators (user_id, community_id) VALUES ($1, $2) on conflict (user_id, community_id) do nothing',
-            [user_id, req.body.community_id]
+            [user_id, community_id]
         );
 
         res.status(201).json({ "success" : true });
     } catch (error) {
-        console.log(error);
-        res.status(500).json({ error: 2, message: 'Internal server error' });
+        next(error);
     }
 }
 
-async function getAllInCommunity(req, res) {
+async function getAllInCommunity(req, res, next) {
     const community_url = /*req.params.url*/ req.query.community_url;
-    if (!community_url) {
-        return res.status(400).json({ error: 1, message: 'Missing required fields (community_url)' });
-    }
 
     try {
         const { rows } = await dbPool.query(
@@ -47,11 +39,9 @@ async function getAllInCommunity(req, res) {
         res.status(200).json({
             community_url,
             moderators,
-            test: req.test,
         });
     } catch (error) {
-        console.log(error);
-        res.status(500).json({ error: 3, message: 'Internal server error' });
+        next(error);
     }
 }
 
