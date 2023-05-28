@@ -5,6 +5,7 @@ import { encode } from 'base64-arraybuffer';
 import crypto from 'crypto';
 
 import { passwordPepper, jwtSecret } from '../app.js';
+import firstRowOrThrow from '../utils/firstRowOrThrow.js';
 
 export default {
     get,
@@ -15,67 +16,36 @@ export default {
 };
 
 
-async function get(req, res) {
+async function get(req, res, next) {
     const username = req.query.username;
-    if (!username) {
-        res.status(400).json({error: 1, message: 'Missing required query param (username)'});
-        return;
-    }
 
     try {
         const result = await dbPool.query('select user_id, username, email, created_at from users where username = $1', [username]);
-
-        if (result.rows.length === 0) {
-            res.status(404).json({error: 1, message: 'User not found'});
-            return;
-        }
-
-        res.status(200).json(result.rows[0]);
+        res.status(200).json(firstRowOrThrow(result));
     } catch (err) {
-        console.error(err);
-        res.status(500).json({error: 2, message: 'Internal server error'});
+        next(err);
     }
 }
 
-async function create(req, res) {
-    if (!req.body || !req.body.username || !req.body.password || !req.body.email) {
-        res.status(400).json({ error: 1, message: 'Missing required fields' });
-        return;
-    }
-
-    const username = req.body.username;
-    const password = req.body.password;
-    const email = req.body.email;
+async function create(req, res, err) {
+    const { username, password, email } = req.body;
 
     if (username.length < 3 || username.length > 20) {
-        res.status(400).json({ error: 2, message: 'Username must be between 3 and 20 characters'});
-        return;
+        throw new Error('Username must be between 3 and 20 characters');
     }
 
     if (password.length < 8 || password.length > 20) {
-        res.status(400).json({ error: 3, message: 'Password must be between 8 and 20 characters'});
-        return;
+        throw new Error('Password must be between 8 and 20 characters');
     }
 
     if (!email.includes('@')) { // todo: replace with regex
-        console.log(email);
-        res.status(400).json({ error: 4, message: 'Invalid email address'});
-        return;
+        throw new Error('Invalid email address (does not match pattern)');
     }
 
-    let hash = '';
     try {
-        hash = await argon2.hash(password + passwordPepper);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 5, message: 'Internal server error'});
-        return;
-    }
+        const hash = await argon2.hash(password + passwordPepper);
+        const webauthn_user_id = encode(crypto.randomBytes(32));
 
-    // generate webauthn_user_id
-    const webauthn_user_id = encode(crypto.randomBytes(32));
-
-    try {
         const result = await dbPool.query('insert into users (username, password_hash, email, webauthn_user_id) values ($1, $2, $3, $4) returning user_id', [username, hash, email, webauthn_user_id]);
         const user_id = result.rows[0].user_id;
 
@@ -88,24 +58,17 @@ async function create(req, res) {
                 }, jwtSecret)
         });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({error: 6, message: `Unable to create user: db says ${err}`});
+        next(err);
     }
 }
 
-async function getById(req, res) {
+async function getById(req, res, next) {
     const user_id = req.params.id;
 
     try {
         const result = await dbPool.query('select user_id, username, email, created_at from users where user_id = $1', [user_id]);
-        if (result.rows.length === 0) {
-            res.status(404).json({error: 1, message: 'User not found'});
-            return;
-        }
-
-        res.status(200).json(result.rows[0]);
+        res.status(200).json(firstRowOrThrow(result));
     } catch (err) {
-        console.error(err);
-        res.status(500).json({error: 2, message: 'Internal server error'});
+        next(err);
     }
 }

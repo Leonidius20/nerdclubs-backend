@@ -19,6 +19,7 @@ import postsRoutes from './routes/posts.routes.js';
 import postVotesRoutes from './routes/post.votes.routes.js';
 import commentsRoutes from './routes/comments.routes.js';
 import commentVotesRoutes from './routes/comment.votes.routes.js';
+import handleErrors from './middlewares/error.handler.middleware.js';
 
 /*
   Initial configuration
@@ -64,7 +65,10 @@ app.use('/comments', commentsRoutes);
 app.use('/comment-votes', commentVotesRoutes);
 
 
-
+/*
+ * Error handling
+*/
+app.use(handleErrors);
 
 /*
   Endpoints
