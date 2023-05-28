@@ -2,14 +2,14 @@ import { dbPool } from "../services/db.service.js";
 
 export default function checkCommunityOwnership(req, res, next) {
     const user = req.user;
-    const community_id = req.community_id;
+    const community_id = req.body.community_id;
 
     
-    if (!req.community_id) {
-        return res.status(400).json({ error: 1, message: 'Missing required fields (community_id)' });
+    if (!community_id) {
+        return res.status(400).json({ error: 1, message: 'Missing required fields (community_id) for ownership check' });
     }
     if (!user) {
-        return res.status(401).json({ error: 2, message: 'Unauthorized' });
+        return res.status(401).json({ error: 2, message: 'Missing header (ownership check)' });
     }
 
     // get community owner (owner_user_id) from database
@@ -27,7 +27,7 @@ export default function checkCommunityOwnership(req, res, next) {
 
         const community = result.rows[0];
         if (community.owner_user_id !== user.user_id) {
-            return res.status(403).json({ error: 5, message: 'Forbidden' });
+            return res.status(403).json({ error: 5, message: 'Unauthorized - not a community owner' });
         }
 
         next();

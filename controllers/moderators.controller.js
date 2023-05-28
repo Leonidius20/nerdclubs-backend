@@ -7,9 +7,23 @@ export default {
 }
 
 async function add(req, res) {
-    res.json({message: "well at least you are authenticated",
-test: req.test
-});
+    const user_id = req.body.user_id;
+
+    if (!user_id) {
+        return res.status(400).json({ error: 1, message: 'Missing required fields (user_id)' });
+    }
+
+    try {
+        await dbPool.query(
+            'INSERT INTO moderators (user_id, community_id) VALUES ($1, $2) on conflict (user_id, community_id) do nothing',
+            [user_id, req.body.community_id]
+        );
+
+        res.status(201).json({ "success" : true });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ error: 2, message: 'Internal server error' });
+    }
 }
 
 async function getAllInCommunity(req, res) {
@@ -20,7 +34,7 @@ async function getAllInCommunity(req, res) {
 
     try {
         const { rows } = await dbPool.query(
-            'SELECT * FROM moderators WHERE community_id = (SELECT community_id from communities WHERE url = $1)',
+            'SELECT moderators.*, users.username FROM moderators left join users using(user_id) WHERE community_id = (SELECT community_id from communities WHERE url = $1)',
             [community_url]
         );
 

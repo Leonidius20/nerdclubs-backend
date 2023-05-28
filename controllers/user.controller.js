@@ -9,18 +9,31 @@ import { passwordPepper, jwtSecret } from '../app.js';
 export default {
     get,
     create,
+    getById,
     //update,
     //remove
 };
 
 
 async function get(req, res) {
+    const username = req.query.username;
+    if (!username) {
+        res.status(400).json({error: 1, message: 'Missing required query param (username)'});
+        return;
+    }
+
     try {
-        const result = await dbPool.query('select * from users');
-        res.status(200).json(result.rows);
+        const result = await dbPool.query('select user_id, username, email, created_at from users where username = $1', [username]);
+
+        if (result.rows.length === 0) {
+            res.status(404).json({error: 1, message: 'User not found'});
+            return;
+        }
+
+        res.status(200).json(result.rows[0]);
     } catch (err) {
         console.error(err);
-        res.status(500).json({error: 1, message: 'Internal server error'});
+        res.status(500).json({error: 2, message: 'Internal server error'});
     }
 }
 
@@ -77,5 +90,22 @@ async function create(req, res) {
     } catch (err) {
         console.error(err);
         res.status(500).json({error: 6, message: `Unable to create user: db says ${err}`});
+    }
+}
+
+async function getById(req, res) {
+    const user_id = req.params.id;
+
+    try {
+        const result = await dbPool.query('select user_id, username, email, created_at from users where user_id = $1', [user_id]);
+        if (result.rows.length === 0) {
+            res.status(404).json({error: 1, message: 'User not found'});
+            return;
+        }
+
+        res.status(200).json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({error: 2, message: 'Internal server error'});
     }
 }
