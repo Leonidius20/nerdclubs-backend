@@ -64,8 +64,6 @@ async function remove(req, res, next) {
 async function makeOwner(req, res, next) {
     const { user_id, community_id } = req.body;
 
-    console.log(req.body);
-
     try {
         await dbPool.query(
             'UPDATE communities SET owner_user_id = $1 WHERE community_id = $2',
