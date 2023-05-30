@@ -12,7 +12,7 @@ export default {
 };
 
 // get challenge for webauthn registration and also save it in db
-async function get(req, res) {
+async function get(req, res, next) {
     const user_id = req.user.user_id;
     const username = req.user.username;
 
@@ -41,13 +41,11 @@ async function get(req, res) {
 
         res.json(encoded);
     } catch (err) {
-        console.error(err);
-        res.status(500).json({error: 1, message: 'Internal server error'});
-        return;
+        next(err);
     }
 }
 
-async function create(req, res) {
+async function create(req, res, next) {
     const user_id = req.user.user_id;
 
     // get challenge from db
@@ -84,9 +82,7 @@ async function create(req, res) {
 
         res.json({success: 1});
     } catch (err) {
-        console.error(err);
-        res.status(500).json({error: 1, message: 'Internal server error'});
-        return;
+        next(err);
     }
 }
 

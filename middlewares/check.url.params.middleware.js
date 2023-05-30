@@ -2,7 +2,7 @@ export default function checkUrlParamsCurry(requiredParams) {
     return function checkUrlParams(req, res, next) {
         const missingParams = [];
         for (const param of requiredParams) {
-            if (!req.query[param]) {
+            if (req.query[param] == null) {
                 missingParams.push(param);
             }
         }

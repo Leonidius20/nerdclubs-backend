@@ -34,7 +34,7 @@ async function create(req, res, next) {
 
         const community_id = result.rows[0].community_id;
 
-        const result2 = await dbPool.query('insert into posts (author_user_id, category_id, community_id, title, content) values ($1, $2, $3, $4, $5) returning post_id', [user_id, category_id, community_id, title, content]);
+        const result2 = await dbPool.query('insert into posts (author_user_id, category_id, community_id, title, content) values ($1, $2, $3, $4, $5)  returning post_id', [user_id, category_id, community_id, title, content]);
 
         res.json(result2.rows[0]);
     } catch (err) {

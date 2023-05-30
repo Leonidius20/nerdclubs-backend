@@ -1,6 +1,6 @@
 import express from 'express';
 import dotenv from 'dotenv';
-import argon2 from 'argon2';
+
 import bodyParser from 'body-parser';
 import jwt from 'jsonwebtoken';
 import speakeasy from 'speakeasy';
@@ -19,7 +19,11 @@ import postsRoutes from './routes/posts.routes.js';
 import postVotesRoutes from './routes/post.votes.routes.js';
 import commentsRoutes from './routes/comments.routes.js';
 import commentVotesRoutes from './routes/comment.votes.routes.js';
+import passwordLoginRoutes from './routes/password.login.routes.js';
+import accountRoutes from './routes/account.routes.js';
+
 import handleErrors from './middlewares/error.handler.middleware.js';
+
 
 /*
   Initial configuration
@@ -64,6 +68,10 @@ app.use('/post-votes', postVotesRoutes);
 app.use('/comments', commentsRoutes);
 app.use('/comment-votes', commentVotesRoutes);
 
+app.use('/login', passwordLoginRoutes);
+
+app.use('/account', accountRoutes);
+
 
 /*
  * Error handling
@@ -74,51 +82,6 @@ app.use(handleErrors);
   Endpoints
  */
 
-app.get('/', (req, res) => res.send('Hello World!'));
-
-
-
-
-
-
-/**
- * @api {post} /login Login 1st factor
- */
-app.post('/login', (req, res) => {
-    if (!req.body || !req.body.username || !req.body.password) {
-        res.status(400).send('error 1: Missing required fields'); // todo: json woth error id
-        return;
-    }
-
-    const username = req.body.username;
-    const password = req.body.password;
-
-    dbPool.query('select password_hash, user_id, twofa_secret from users where username = $1', [username], async (err, result) => {
-        if (err) {
-            console.error(err);
-            res.status(500).json({ error: 1, message: 'Internal server error'});
-        } else {
-            if (result.rows.length === 0) {
-                res.status(401).json({ error: 2, message: 'Invalid username or password'});
-                return;
-            }
-
-            const hash = result.rows[0].password_hash;
-            const valid = await argon2.verify(hash, password + passwordPepper);
-
-            const user_id = result.rows[0].user_id;
-            if (valid) {
-                const twoFactorRequired = result.rows[0].twofa_secret !== null;
-
-                res.status(200).json({
-                    token: jwt.sign({ username, user_id, twofa_enabled: twoFactorRequired, twofa_passed: !twoFactorRequired }, jwtSecret)
-                });
-            } else {
-                res.status(401).json({ error: 2, message: 'Invalid username or password'});
-            }
-        }
-    });
-});
 
 /**
  * @api {post} /login/2fa/add add 2nd factor
@@ -274,24 +237,7 @@ app.post('/login/2fa', authenticateJWT, (req, res) => {
     });
 });
 
-/**
- * @api {get} /account Details about the currently logged in user
- */
-app.get('/account', authenticateJWT, (req, res) => {
-    const user_id = req.user.user_id;
 
-    // get everything from the database and send back
-    dbPool.query(`select username, email, privilege_level, created_at, CASE WHEN webauthn_public_key IS NOT NULL
-    THEN true
-    ELSE false END AS biometric_enabled from users where user_id = $1`, [user_id], (err, result) => {
-        if (err) {
-            console.error(err);
-            res.status(500).json({ error: 1, message: 'Internal server error'});
-        } else {
-            res.status(200).json(result.rows[0]);
-        }
-    });
-});
 
 /**
  * @api {get} /verifytoken Check if JWT token has correct signature

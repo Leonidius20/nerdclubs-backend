@@ -1,4 +1,5 @@
 import { dbPool } from '../services/db.service.js';
+import firstRowOrThrow from '../utils/firstRowOrThrow.js';
 
 export default {
     getById,
@@ -8,7 +9,7 @@ export default {
     //remove
 };
 
-async function getById(req, res) {
+async function getById(req, res, next) {
     const { id } = req.params;
     if (!id) {
         // it is probably impossible to get here, but just in case
@@ -16,16 +17,12 @@ async function getById(req, res) {
     }
 
     try {
-        const { rows } = await dbPool.query(
+        const result = await dbPool.query(
             'SELECT * FROM categories WHERE category_id = $1',
             [id]
         );
 
-        if (rows.length === 0) {
-            return res.status(404).json({ error: 2, message: 'Category not found' });
-        }
-
-        const category = rows[0];
+        const category = firstRowOrThrow(result);
 
         res.status(200).json({
             id: category.category_id,
@@ -34,12 +31,11 @@ async function getById(req, res) {
             community_id: category.community_id,
         });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 3, message: 'Internal server error' });
+        next(error);
     }
 }
 
-async function getAllInCommunity(req, res) {
+async function getAllInCommunity(req, res, next) {
     // paged search. If no page is specified, it will return the first page
     // If no seach query is specified, it will return all categories
     let { community_id } = req.query;
@@ -57,18 +53,13 @@ async function getAllInCommunity(req, res) {
             community_id: category.community_id,
         })));
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 3, message: 'Internal server error' });
+        next(error);
     }
 }
 
-async function create(req, res) {
-    // todo check moderator permissions
-
+async function create(req, res, next) {
     let { name, description, community_id } = req.body;
-    if (!name || !community_id) {
-        return res.status(400).json({ error: 1, message: 'Missing required fields (name, community_id)' });
-    }
+    
     if (!description) {
         description = '';
     }
@@ -81,7 +72,6 @@ async function create(req, res) {
 
         res.status(201).json({ id: rows[0].category_id });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 2, message: 'Internal server error' });
+        next(error);
     }
 }

@@ -4,7 +4,7 @@ export default function checkBodyFieldsCurry(requiredFields) {
     return function checkBodyFields(req, res, next) {
         const missingFields = [];
         for (const field of requiredFields) {
-            if (!req.body[field]) {
+            if (req.body[field] == null) {
                 missingFields.push(field);
             }
         }

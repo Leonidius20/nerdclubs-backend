@@ -23,7 +23,7 @@ async function get(req, res) {
     res.json({ options: encoded });
 }
 
-async function create(req, res) {
+async function create(req, res, next) {
     // get objToSend from client
     const objToSend = req.body;
     const challenge = decode(objToSend.challenge);
@@ -64,7 +64,6 @@ async function create(req, res) {
         });
 
     } catch (err) {
-        console.log(err);
-        res.status(400).json({ error: 1, message: "Error logging in" });
+        next(err);
     }
 }

@@ -5,7 +5,7 @@ export default {
     create,
 };
 
-async function getAllForPost(req, res) {
+async function getAllForPost(req, res, next) {
     const { post_id } = req.params;
     if (!post_id) {
         return res.status(400).json({ error: 1, message: 'Missing required fields (post_id)' });
@@ -116,18 +116,14 @@ async function getAllForPost(req, res) {
 
         res.status(200).json(comments);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 3, message: 'Internal server error' });
+        next(error);
     }
 }
 
-async function create(req, res) {
+async function create(req, res, next) {
     const user_id = req.user.user_id;
 
     const { post_id, content, parent_comment_id } = req.body;
-    if (!post_id || !content) {
-        return res.status(400).json({ error: 1, message: 'Missing required fields (post_id, content)' });
-    }
 
     if (!user_id) {
         return res.status(400).json({ error: 2, message: 'invalid token - Missing required fields (user_id)' });
@@ -141,8 +137,7 @@ async function create(req, res) {
 
         res.status(200).json(rows[0]);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 3, message: 'Internal server error' });
+        next(error);
     }
 }
 
