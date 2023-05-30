@@ -20,10 +20,16 @@ router.post("/",
 
 router.delete("/", 
     authenticateJWT, 
-    checkCommunityOwnership,
     checkBodyFieldsCurry(['user_id', 'community_id']),
+    checkCommunityOwnership,
     controller.remove
 );
 
+router.post("/make-owner",
+    authenticateJWT,
+    checkBodyFieldsCurry(['user_id', 'community_id']),
+    checkCommunityOwnership,
+    controller.makeOwner
+);
 
 export default router;
