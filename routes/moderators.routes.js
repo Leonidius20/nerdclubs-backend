@@ -17,7 +17,13 @@ router.post("/",
     checkCommunityOwnership, 
     controller.add
 );
-router.delete("/", authenticateJWT, checkCommunityOwnership, controller.remove);
+
+router.delete("/", 
+    authenticateJWT, 
+    checkCommunityOwnership,
+    checkBodyFieldsCurry(['user_id', 'community_id']),
+    controller.remove
+);
 
 
 export default router;

@@ -45,5 +45,17 @@ async function getAllInCommunity(req, res, next) {
     }
 }
 
-async function remove(req, res) {
+async function remove(req, res, next) {
+    const { user_id, community_id } = req.body;
+
+    try {
+        await dbPool.query(
+            'DELETE FROM moderators WHERE user_id = $1 AND community_id = $2',
+            [user_id, community_id]
+        );
+
+        res.status(200).json({ "success" : true });
+    } catch (error) {
+        next(error);
+    }
 }
