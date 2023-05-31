@@ -10,11 +10,21 @@ export default {
 
 async function create(req, res, next) {
     const { url, title, community_id, content } = req.body;
+
+    const { user_id } = req.user;
     
     try {
         const result = await dbPool.query(
             `INSERT INTO wiki_pages (url, title, community_id, content) VALUES ($1, $2, $3, $4) RETURNING *`,
             [url, title, community_id, content]
+        );
+
+        const savedWikiPage = firstRowOrThrow(result);
+
+        // save this version as the first version
+        await dbPool.query(
+            `INSERT INTO wiki_page_versions (wiki_page_id, title, content, last_editor_user_id) VALUES ($1, $2, $3, $4)`,
+            [savedWikiPage.wiki_page_id, title, content, user_id]
         );
 
         res.json({ success: true });
@@ -41,10 +51,18 @@ async function getByUrl(req, res, next) {
 async function update(req, res, next) {
     const { wiki_page_id, title, content } = req.body;
 
+    const { user_id } = req.user;
+
     try {
         const result = await dbPool.query(
             `UPDATE wiki_pages SET title = $1, content = $2 WHERE wiki_page_id = $3 RETURNING *`,
             [title, content, wiki_page_id]
+        );
+
+        // save this version as the first version
+        await dbPool.query(
+            `INSERT INTO wiki_page_versions (wiki_page_id, title, content, last_editor_user_id) VALUES ($1, $2, $3, $4)`,
+            [wiki_page_id, title, content, user_id]
         );
 
         res.json({ success: true });
