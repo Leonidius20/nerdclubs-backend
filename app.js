@@ -21,6 +21,7 @@ import commentsRoutes from './routes/comments.routes.js';
 import commentVotesRoutes from './routes/comment.votes.routes.js';
 import passwordLoginRoutes from './routes/password.login.routes.js';
 import accountRoutes from './routes/account.routes.js';
+import wiliPagesRoutes from './routes/wiki.pages.routes.js';
 
 import handleErrors from './middlewares/error.handler.middleware.js';
 
@@ -71,6 +72,9 @@ app.use('/comment-votes', commentVotesRoutes);
 app.use('/login', passwordLoginRoutes);
 
 app.use('/account', accountRoutes);
+
+app.use('/wiki-pages', wiliPagesRoutes);
+
 
 
 /*
