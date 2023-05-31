@@ -23,4 +23,9 @@ router.put('/',
     controller.update
 );
 
+router.get('/all',
+    checkUrlParamsCurry(['community_id']),
+    controller.getAllInCommunity
+);
+
 export default router;

@@ -5,6 +5,7 @@ export default {
     create,
     getByUrl,
     update,
+    getAllInCommunity,
 }
 
 async function create(req, res, next) {
@@ -47,6 +48,21 @@ async function update(req, res, next) {
         );
 
         res.json({ success: true });
+    } catch (error) {
+        next(error);
+    }
+}
+
+async function getAllInCommunity(req, res, next) {
+    const { community_id } = req.query;
+
+    try {
+        const result = await dbPool.query(
+            `SELECT * FROM wiki_pages WHERE community_id = $1`,
+            [community_id]
+        );
+
+        res.json(result.rows);
     } catch (error) {
         next(error);
     }
