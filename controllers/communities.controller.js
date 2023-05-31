@@ -1,4 +1,3 @@
-import e from 'express';
 import { dbPool } from '../services/db.service.js';
 import firstRowOrThrow from '../utils/firstRowOrThrow.js';
 import HandlableError from '../utils/handlableError.js';
@@ -29,15 +28,27 @@ async function getByUrl(req, res, next) {
         // optionally check jwt token to see if user is owner of the community
         if (req.user && req.user.user_id === community.owner_user_id) {
             community.is_owner = true;
+            community.is_moderator = true;
+        } else {
+            community.is_owner = false;
+            // check if user is a moderator of the community
+            if (req.user) {
+                const { rows } = await dbPool.query(
+                    'SELECT 1 FROM moderators WHERE community_id = $1 AND user_id = $2',
+                    [community.community_id, req.user.user_id]
+                );
+
+                if (rows.length > 0) {
+                    community.is_moderator = true;
+                } else {
+                    community.is_moderator = false;
+                }
+            }
         }
 
         res.status(200).json({
+            ...community,
             id: community.community_id,
-            name: community.name,
-            description: community.description,
-            url: community.url,
-            owner_user_id: community.owner_user_id,
-            is_owner: community.is_owner,
         });
     } catch (error) {
         next(error);

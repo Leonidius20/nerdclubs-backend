@@ -3,6 +3,7 @@ import { encode, decode } from 'base64-arraybuffer';
 import { jwtSecret, webauthnClientOrigin } from '../app.js';
 import jwt from 'jsonwebtoken';
 import { dbPool } from '../services/db.service.js';
+import firstRowOrThrow from '../utils/firstRowOrThrow.js';
 
 
 export default {
@@ -42,13 +43,13 @@ async function create(req, res, next) {
     };
 
     const encodedUserHandle = encodedCredential.response.userHandle;
-    // get user id, username and public key from db by user handle (webauthn user id)
-    const result = await dbPool.query('select user_id, username, webauthn_public_key from users where webauthn_user_id = $1', [encodedUserHandle]);
-    const user_id = result.rows[0].user_id;
-    const username = result.rows[0].username;
-    const publicKey = result.rows[0].webauthn_public_key;
 
     try {
+        // get user id, username and public key from db by user handle (webauthn user id)
+        const result = await dbPool.query('select user_id, username, webauthn_public_key from users where webauthn_user_id = $1', [encodedUserHandle]);
+        const { user_id, username, webauthn_public_key } = firstRowOrThrow(result);
+        const publicKey = webauthn_public_key;
+
         const validationResult = await fido2.assertionResult(decodedCredential, {
             challenge,
             origin: webauthnClientOrigin,

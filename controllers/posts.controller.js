@@ -6,7 +6,7 @@ export default {
     create,
     getPostById,
     //update,
-    //remove
+    remove,
 };
 
 async function getInCategory(req, res, next) {
@@ -53,7 +53,56 @@ async function getPostById(req, res, next) {
 
     try {
         const result = await dbPool.query('select posts.*, users.username from posts left join users on posts.author_user_id = users.user_id where post_id = $1', [post_id]);
-        res.json(firstRowOrThrow(result));
+        const post = firstRowOrThrow(result);
+
+        if (req.user && req.user.user_id === post.author_user_id) {
+            post.is_author = true;
+        } else {
+            post.is_author = false;
+        }
+
+        res.json(post);
+    } catch (err) {
+        next(err);
+    }
+}
+
+async function remove(req, res, next) {
+    const post_id = req.params.id;
+
+    if (!post_id) {
+        // impossilbe to reach probably
+        res.status(400).json({error: 1, message: 'Missing post_id'});
+        return;
+    }
+
+    try {
+        const result = await dbPool.query('select community_id from posts where post_id = $1', [post_id]);
+        const { community_id } = firstRowOrThrow(result);
+
+        let authorized = false;
+
+        // check if owner
+        const result2 = await dbPool.query('select owner_user_id from communities where community_id = $1', [community_id]);
+        const { owner_user_id } = firstRowOrThrow(result2);
+        if (req.user && req.user.user_id === owner_user_id) {
+            authorized = true;
+        } else {
+            // check if moderator
+            const result3 = await dbPool.query('select * from moderators where community_id = $1 and user_id = $2', [community_id, req.user.user_id]);
+            if (result3.rows.length > 0) {
+                authorized = true;
+            }
+        }
+
+        if (!authorized) {
+            res.status(403).json({error: 1, message: 'You are not authorized to delete this post'});
+            return;
+        }
+
+        await dbPool.query('delete from posts where post_id = $1', [post_id]);
+
+        res.json({success: 1, message: 'Post deleted'});
     } catch (err) {
         next(err);
     }
