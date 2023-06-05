@@ -27,7 +27,7 @@ async function get(req, res, next) {
     }
 }
 
-async function create(req, res, err) {
+async function create(req, res, next) {
     const { username, password, email } = req.body;
 
     if (username.length < 3 || username.length > 20) {
@@ -58,6 +58,9 @@ async function create(req, res, err) {
                 }, jwtSecret)
         });
     } catch (err) {
+        if (err.code === '23505') {
+            next(new Error('Username or email already exists'));
+        }
         next(err);
     }
 }
