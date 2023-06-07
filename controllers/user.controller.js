@@ -11,6 +11,9 @@ export default {
     get,
     create,
     getById,
+    getBannedUsers,
+    banUser,
+    unbanUser,
     //update,
     //remove
 };
@@ -54,7 +57,8 @@ async function create(req, res, next) {
                     username, 
                     user_id, 
                     twofa_enabled: false,
-                    twofa_passed: true 
+                    twofa_passed: true,
+                    privilege_level: 1
                 }, jwtSecret)
         });
     } catch (err) {
@@ -71,6 +75,37 @@ async function getById(req, res, next) {
     try {
         const result = await dbPool.query('select user_id, username, email, created_at from users where user_id = $1', [user_id]);
         res.status(200).json(firstRowOrThrow(result));
+    } catch (err) {
+        next(err);
+    }
+}
+
+async function getBannedUsers(req, res, next) {
+    try {
+        const result = await dbPool.query('select user_id, username, email, created_at from users where is_banned IS True');
+        res.status(200).json(result.rows);
+    } catch (err) {
+        next(err);
+    }
+}
+
+async function banUser(req, res, next) {
+    const user_id = req.params.id;
+
+    try {
+        const result = await dbPool.query('update users set is_banned = True where user_id = $1', [user_id]);
+        res.status(200).json(result.rows);
+    } catch (err) {
+        next(err);
+    }
+}
+
+async function unbanUser(req, res, next) {
+    const user_id = req.params.id;
+
+    try {
+        await dbPool.query('update users set is_banned = False where user_id = $1', [user_id]);
+        res.status(200).json({ success: 1 });
     } catch (err) {
         next(err);
     }
