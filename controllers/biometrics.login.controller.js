@@ -46,8 +46,8 @@ async function create(req, res, next) {
 
     try {
         // get user id, username and public key from db by user handle (webauthn user id)
-        const result = await dbPool.query('select user_id, username, webauthn_public_key, privilege_level from users where webauthn_user_id = $1', [encodedUserHandle]);
-        const { user_id, username, webauthn_public_key, privilege_level } = firstRowOrThrow(result);
+        const result = await dbPool.query('select user_id, username, webauthn_public_key, privilege_level, is_banned from users where webauthn_user_id = $1', [encodedUserHandle]);
+        const { user_id, username, webauthn_public_key, privilege_level, is_banned } = firstRowOrThrow(result);
         const publicKey = webauthn_public_key;
 
         const validationResult = await fido2.assertionResult(decodedCredential, {
@@ -61,7 +61,7 @@ async function create(req, res, next) {
         
         // create a jwt token and send it to client
         res.json({
-            token: jwt.sign({ username, user_id, twofa_enabled: false, twofa_passed: true, privilege_level }, jwtSecret)
+            token: jwt.sign({ username, user_id, twofa_enabled: false, twofa_passed: true, privilege_level, is_banned }, jwtSecret)
         });
 
     } catch (err) {

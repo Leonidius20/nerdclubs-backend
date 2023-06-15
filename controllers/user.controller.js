@@ -58,7 +58,8 @@ async function create(req, res, next) {
                     user_id, 
                     twofa_enabled: false,
                     twofa_passed: true,
-                    privilege_level: 1
+                    privilege_level: 1,
+                    is_banned: false,
                 }, jwtSecret)
         });
     } catch (err) {
