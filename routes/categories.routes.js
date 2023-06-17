@@ -21,4 +21,11 @@ router.post('/',
     controller.create
 );
 
+router.delete('/',
+    authenticateJWT,
+    checkCommunityModeratorship,
+    checkBodyFieldsCurry(['category_id']),
+    controller.remove
+);
+
 export default router;

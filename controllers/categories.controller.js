@@ -6,7 +6,7 @@ export default {
     create,
     getAllInCommunity,
     //update,
-    //remove
+    remove,
 };
 
 async function getById(req, res, next) {
@@ -71,6 +71,21 @@ async function create(req, res, next) {
         );
 
         res.status(201).json({ id: rows[0].category_id });
+    } catch (error) {
+        next(error);
+    }
+}
+
+async function remove(req, res, next) {
+    const { category_id } = req.body;
+
+    try {
+        await dbPool.query(
+            'DELETE FROM categories WHERE category_id = $1',
+            [category_id]
+        );
+
+        res.status(200).json({ success: 1 });
     } catch (error) {
         next(error);
     }
