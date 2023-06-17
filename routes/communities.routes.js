@@ -4,6 +4,8 @@ import authenticateJWT, { authenticateJWTOptional } from '../middlewares/authent
 import moderatorsRouter from './moderators.routes.js';
 import extractCommunityUrl from '../middlewares/extract.community.url.js';
 import checkBodyFieldsCurry from '../middlewares/check.body.fields.middleware.js';
+import checkCommunityOwnership from '../middlewares/check.community.ownership.js';
+import checkSiteAdminship from '../middlewares/check.site.adminship.js';
 
 const router = Router();
 
@@ -26,5 +28,12 @@ router.post('/',
 // router.use('/:url/moderators', extractCommunityUrl, moderatorsRouter);
 
 // maybe add sub-route for categories of a community
+
+router.delete('/',
+    authenticateJWT,
+    checkSiteAdminship,
+    checkBodyFieldsCurry(['community_id']),
+    controller.remove
+);
 
 export default router;

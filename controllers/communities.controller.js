@@ -7,7 +7,7 @@ export default {
     create,
     getAll,
     //update,
-    //remove
+    remove,
 };
 
 async function getByUrl(req, res, next) {
@@ -128,5 +128,20 @@ async function create(req, res, next) {
         } else {
             next(error);
         }   
+    }
+}
+
+async function remove(req, res, next) {
+    const { community_id } = req.body;
+
+    try {
+        await dbPool.query(
+            'DELETE FROM communities WHERE community_id = $1',
+            [community_id]
+        );
+
+        res.status(200).json({ success: 1 });
+    } catch (error) {
+        next(error);
     }
 }
