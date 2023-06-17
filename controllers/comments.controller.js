@@ -1,8 +1,10 @@
 import { dbPool } from "../services/db.service.js";
+import firstRowOrThrow from "../utils/firstRowOrThrow.js";
 
 export default {
     getAllForPost,
     create,
+    remove,
 };
 
 async function getAllForPost(req, res, next) {
@@ -141,3 +143,65 @@ async function create(req, res, next) {
     }
 }
 
+async function remove(req, res, next) {
+    // if has no chilren, just delete
+    // if has children, set content to [deleted] 
+    const user_id = req.user.user_id;
+
+    const { comment_id } = req.body;
+
+    try {
+
+        // load comment from db
+        const commentResult = await dbPool.query(
+            'SELECT c.*, p.community_id FROM comments c LEFT JOIN posts p on c.post_id = p.post_id WHERE comment_id = $1',
+            [comment_id]
+        );
+        const comment = firstRowOrThrow(commentResult);
+        const community_id = comment.community_id;
+
+        // check if user is the author or a moderator
+        let authorized = false;
+        if (user_id === comment.author_user_id) {
+            authorized = true;
+        } else {
+            // check if user is a moderator or a community owner
+            
+            const ownerResult = await dbPool.query('SELECT owner_user_id FROM communities WHERE community_id = $1', [community_id]);
+            const owner = firstRowOrThrow(ownerResult);
+            if (owner.owner_user_id === user_id) {
+                authorized = true;
+            } else {
+                // check if exists in moderators table record with user_id and community_id
+                const moderatorResult = await dbPool.query('SELECT * FROM moderators WHERE user_id = $1 AND community_id = $2', [user_id, community_id]);
+                if (moderatorResult.rows.length > 0) {
+                    authorized = true;
+                }
+            }
+            
+        }
+
+        if (!authorized) {
+            return res.status(403).json({ error: 1, message: 'You are not authorized to delete this comment' });
+        }
+
+        // check if has children
+        const childrenResult = await dbPool.query('SELECT * FROM comments WHERE parent_comment_id = $1', [comment_id]);
+        const hasChildren = childrenResult.rows.length > 0;
+        if (hasChildren) {
+            // set content to [deleted]
+            await dbPool.query('UPDATE comments SET is_deleted = True WHERE comment_id = $1', [comment_id]);
+            res.status(200).json({ success: 1 });
+            return;
+//          TODO
+        } else {
+            // delete
+            await dbPool.query('DELETE FROM comments WHERE comment_id = $1', [comment_id]);
+            res.status(200).json({ success: 1 });
+            return;
+        }
+        
+    } catch (error) {
+        next(error);
+    }
+}

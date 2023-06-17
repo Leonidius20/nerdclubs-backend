@@ -12,4 +12,10 @@ router.post('/',
     commentsController.create
 );
 
+router.delete('/',
+    authenticateJWT,
+    checkBodyFieldsCurry(['comment_id']),
+    commentsController.remove
+);
+
 export default router;

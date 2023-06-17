@@ -46,6 +46,20 @@ async function getByUrl(req, res, next) {
             }
         }
 
+        // check if user is banned from the community
+        if (req.user) {
+            const { rows } = await dbPool.query(
+                'SELECT 1 FROM community_bans WHERE community_id = $1 AND user_id = $2',
+                [community.community_id, req.user.user_id]
+            );
+
+            if (rows.length > 0) {
+                community.is_banned = true;
+            } else {
+                community.is_banned = false;
+            }
+        }
+
         res.status(200).json({
             ...community,
             id: community.community_id,
