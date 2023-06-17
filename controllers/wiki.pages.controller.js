@@ -6,6 +6,7 @@ export default {
     getByUrl,
     update,
     getAllInCommunity,
+    remove,
 }
 
 async function create(req, res, next) {
@@ -81,6 +82,21 @@ async function getAllInCommunity(req, res, next) {
         );
 
         res.json(result.rows);
+    } catch (error) {
+        next(error);
+    }
+}
+
+async function remove(req, res, next) {
+    const { wiki_page_id } = req.body;
+
+    try {
+        await dbPool.query(
+            `DELETE FROM wiki_pages WHERE wiki_page_id = $1`,
+            [wiki_page_id]
+        );
+
+        res.json({ success: true });
     } catch (error) {
         next(error);
     }
