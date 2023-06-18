@@ -10,10 +10,18 @@ export default {
 };
 
 async function getInCategory(req, res, next) {
-    const category_id = req.query.category_id;
+    let { category_id, page } = req.query;
+
+    if (!page) {
+        page = 1;
+    }
+
+    const pageSize = 10; 
+    const offset = (page - 1) * pageSize;
 
     try {
-        const result = await dbPool.query('select posts.*, users.username from posts left join users on posts.author_user_id = users.user_id where category_id = $1', [category_id]);
+        const result = await dbPool.query('select posts.*, users.username, count(*) OVER() AS full_results_count from posts left join users on posts.author_user_id = users.user_id where category_id = $1 ORDER BY posts.created_at ASC LIMIT $2 OFFSET $3', 
+        [category_id, pageSize, offset]);
         res.json(result.rows);
     } catch (err) {
         next(err);
