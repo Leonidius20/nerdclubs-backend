@@ -24,6 +24,7 @@ import accountRoutes from './routes/account.routes.js';
 import wikiPagesRoutes from './routes/wiki.pages.routes.js';
 import wikiPageVersionsRoutes from './routes/wiki.page.versions.routes.js';
 import communityBansRoutes from './routes/community.bans.routes.js';
+import subscriptionsRoutes from './routes/subscriptions.routes.js';
 
 import handleErrors from './middlewares/error.handler.middleware.js';
 import communitiesController from './controllers/communities.controller.js';
@@ -81,6 +82,8 @@ app.use('/wiki-pages', wikiPagesRoutes);
 app.use('/wiki-page-versions', wikiPageVersionsRoutes);
 
 app.use('/community-admin', communityBansRoutes);
+
+app.use('/subscriptions', subscriptionsRoutes);
 
 app.get('/community-count', communitiesController.getNumberOfCommunities);
 

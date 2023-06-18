@@ -44,6 +44,8 @@ async function getByUrl(req, res, next) {
                 } else {
                     community.is_moderator = false;
                 }
+            } else {
+                community.is_moderator = false;
             }
         }
 
@@ -59,6 +61,25 @@ async function getByUrl(req, res, next) {
             } else {
                 community.is_banned = false;
             }
+        } else {
+            community.is_banned = false;
+        }
+
+        // check if user is subscribed to the community
+        if (req.user) {
+            const { rows } = await dbPool.query(
+                'SELECT 1 FROM subscriptions WHERE community_id = $1 AND user_id = $2',
+
+                [community.community_id, req.user.user_id]
+            );
+
+            if (rows.length > 0) {
+                community.is_subscribed = true;
+            } else {
+                community.is_subscribed = false;
+            }
+        } else {
+            community.is_subscribed = false;
         }
 
         res.status(200).json({
