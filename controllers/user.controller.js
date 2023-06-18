@@ -82,8 +82,19 @@ async function getById(req, res, next) {
 }
 
 async function getBannedUsers(req, res, next) {
+    let { page } = req.query;
+
+    if (!page) {
+        page = 1;
+    }
+
+    const pageSize = 10; 
+    const offset = (page - 1) * pageSize;
+
+
     try {
-        const result = await dbPool.query('select user_id, username, email, created_at from users where is_banned IS True');
+        const result = await dbPool.query('select user_id, username, email, created_at, count(*) OVER() AS full_results_count from users where is_banned IS True ORDER BY username LIMIT $1 OFFSET $2', 
+            [pageSize, offset]);
         res.status(200).json(result.rows);
     } catch (err) {
         next(err);
