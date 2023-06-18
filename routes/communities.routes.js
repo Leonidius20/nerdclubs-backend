@@ -15,6 +15,8 @@ const router = Router();
  */
 router.get('/', controller.getAll);
 
+
+
 router.get('/:url', authenticateJWTOptional, controller.getByUrl);
 router.post('/', 
     authenticateJWT, 
@@ -35,5 +37,6 @@ router.delete('/',
     checkBodyFieldsCurry(['community_id']),
     controller.remove
 );
+
 
 export default router;

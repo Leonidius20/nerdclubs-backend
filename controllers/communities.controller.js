@@ -8,6 +8,7 @@ export default {
     getAll,
     //update,
     remove,
+    getNumberOfCommunities,
 };
 
 async function getByUrl(req, res, next) {
@@ -86,7 +87,7 @@ async function getAll(req, res, next) {
             query = query.toLowerCase();
 
             const { rows } = await dbPool.query(
-                'SELECT community_id, name, description, url FROM communities WHERE LOWER(name) LIKE $1 ORDER BY community_id LIMIT $2 OFFSET $3',
+                'SELECT community_id, name, description, url, count(*) OVER() AS full_results_count FROM communities WHERE LOWER(name) LIKE $1 ORDER BY community_id LIMIT $2 OFFSET $3',
                 [`%${query}%`, page_size, offset]
             );
 
@@ -141,6 +142,18 @@ async function remove(req, res, next) {
         );
 
         res.status(200).json({ success: 1 });
+    } catch (error) {
+        next(error);
+    }
+}
+
+async function getNumberOfCommunities(req, res, next) {
+    try {
+        const { rows } = await dbPool.query(
+            'SELECT COUNT(*) FROM communities'
+        );
+
+        res.status(200).json({ count: rows[0].count });
     } catch (error) {
         next(error);
     }
